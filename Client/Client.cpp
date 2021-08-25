@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
 
 	//Step 5: Communicate with server
 	int ret, messageLen;
-	//while (1) {
+	while (1) {
 		menu();
 		messageLen = request.size();
 		if (messageLen == 0) {
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 		solveResponse(ress[0], client, reqs[0]);
 		request = "";
 		response = "";
-	//}
+	}
 	//Step 6: Close socket
 	closesocket(client);
 	//Step 7: Terminate Winsock
@@ -267,8 +267,16 @@ void showQues() {
 }
 
 string signUp() {
-	cin >> request;
-	// append request
+
+	string username, password, request;
+	cout << "SIGN UP NEW ACCOUNT: " << endl;
+	cout << "username: ";
+	cin >> username;
+	cout << "\npassword: ";
+	cin >> password;
+
+	request.append(SIGNUP).append(" ").append(username).append(" ").append(password).append("\r\n");
+	
 	return request;
 }
 string logIn() {
@@ -287,7 +295,8 @@ string logIn() {
 	return request;
 }
 string logOut() {
-	// append request
+	string request = LOGOUT;
+	request.append("\r\n");
 	return request;
 }
 
@@ -298,14 +307,24 @@ string start() {
 	request.append("\r\n");
 	return request;
 }
-string answer() {
-	cin >> request;
-	// append request
+string answer(string option) {
+	string request;
+	request.append(ANSWER).append(" ").append(option).append("\r\n");
 	return request;
 }
 string assist() {
-	cin >> request;
-	// append request
+	string request, assistance;
+	cout << "CHOOSE TYPE OF ASSISTANCE: " << endl;
+	cout << "1: 50-50 - deliminate 2 wrong options" << endl;
+	cout << "2: Ask a professional" << endl;
+	int option;
+	cin >> option;
+	while (option != 1 && option != 2) {
+		cout << "option must be 1 or 2" << endl;
+		cin >> option;
+	}
+	
+	request.append(ASSIST).append(" ").append(assistance).append("\r\n");
 	return request;
 }
 string quit() {

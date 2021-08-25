@@ -35,9 +35,9 @@ enum ResponseCode {
 
 	SERVER_ERROR = 10,
 	BAD_REQUEST = 20,
-	CANNOT_USE_ASSIST = 21,
-	CANNOT_START_GAME = 22,
-	CANNOT_ANSWER = 23,
+	USERNAME_EXISTED = 21,
+	OUT_OF_ASSIST = 22,
+	NOT_IN_GAME = 23,
 	CANNOT_QUIT = 24,
 	STARTED = 29,
 };
@@ -50,15 +50,12 @@ struct Question {
 };
 struct Assist {
 	bool _50_50;
-	bool _call_a_friend;
-	bool _ask_the_audience;
+	bool proChoice;
 	Assist() {
 		this->_50_50 = true;
-		this->_call_a_friend = true;
-		this->_ask_the_audience = true;
+		this->proChoice = true;
 	}
 };
-
 
 struct Account {
 	string username;
@@ -74,6 +71,7 @@ struct ClientInfo {
 	int statusInGame;
 	Question listQues[15];
 	int score;
+	int currQuestion;
 	Assist assist;
 };
 /*
@@ -86,6 +84,7 @@ vector<Account> getAllAccounts(string accounts_path) {
 	ifstream file(accounts_path);
 	while (getline(file, line))
 	{
+		cout << "line : " << line << endl;
 		Account account;
 		vector<string> data = split(line, " ");
 		account.username = data[0];
@@ -148,9 +147,36 @@ string ACCOUNTS_PATH = "account.txt";
 
 vector<Account> accounts = getAllAccounts(ACCOUNTS_PATH);
 vector<Question> questions = getAllQuestions(QUESTIONS_PATH);
+
 string signUp(ClientInfo* clientInfo, char *body) {
-	string response;
-	return response;
+
+	ResponseCode response;
+	Account account;
+	vector<string> data = split(body, " ");
+	account.username = data[0];
+	account.password = data[1];
+	account.status = 1;
+
+	if (clientInfo->statusLogin) {
+		response = USER_LOGINED;
+	}
+	else {
+		int number_accounts = accounts.size();
+		int i;
+		for (i = 0; i < number_accounts; i++) {
+			if (accounts[i].username == account.username) {
+				response = USERNAME_EXISTED;
+				break;
+			}
+		}
+		if (i == number_accounts) {
+			saveAccount(account, ACCOUNTS_PATH);
+			accounts.push_back(account);
+			response = SUCCESS;
+		}
+	}
+
+	return to_string(response);
 }
 string logIn(ClientInfo* clientInfo, char* body) {
 	ResponseCode response = INCORRECT_ACCOUNT;
@@ -181,8 +207,18 @@ string logIn(ClientInfo* clientInfo, char* body) {
 	return to_string(response);
 }
 string logOut(ClientInfo* clientInfo) {
-	string response;
-	return response;
+
+	ResponseCode response;
+	if (!clientInfo->statusLogin) {
+		response = NO_LOGIN;
+	}
+	else {
+		clientInfo->statusLogin = false;
+		clientInfo->statusInGame = false;
+		response = SUCCESS;
+	}
+
+	return to_string(response);
 }
 string start(ClientInfo* clientInfo, char *body) {
 	ResponseCode response = BAD_REQUEST;
@@ -197,6 +233,8 @@ string start(ClientInfo* clientInfo, char *body) {
 			// start game
 			clientInfo->statusInGame = true;
 			clientInfo->score = 0;
+			clientInfo->currQuestion = 1;
+			clientInfo->assist = Assist();
 			//clientInfo->listQues = ;
 			response = SUCCESS;
 		}
@@ -204,11 +242,79 @@ string start(ClientInfo* clientInfo, char *body) {
 	return to_string(response);
 }
 string answer(ClientInfo* clientInfo, char *body) {
+
 	string response;
+	ResponseCode responseCode;
+	string responseInfo = "";
+
+
+	if (!clientInfo->statusLogin) responseCode = NO_LOGIN;
+	else if (!clientInfo->statusInGame) responseCode = NOT_IN_GAME;
+	else {
+		responseCode = SUCCESS;
+		int qNum = clientInfo->currQuestion;
+		if (clientInfo->listQues[qNum].answer.compare(body) == 0) responseInfo = "true";
+		else responseInfo = "false";
+	}
+
+	response.append(to_string(responseCode));
+	if (responseInfo.length() != 0)	response.append(" ").append(responseInfo);
+
+
 	return response;
 }
 string assist(ClientInfo* clientInfo, char *body) {
+
 	string response;
+	ResponseCode responseCode;
+	string responseInfo;
+
+
+	if (!clientInfo->statusLogin) responseCode = NO_LOGIN;
+	else if (!clientInfo->statusInGame) responseCode = NOT_IN_GAME;
+	else if (strcmp(body, "5050") == 0) {
+		if (clientInfo->assist._50_50) {
+			responseCode = SUCCESS;
+			clientInfo->assist._50_50 = false;
+
+			string options[4] = { "A" , "B", "C", "D" };
+			string rightAns = clientInfo->listQues[clientInfo->currQuestion].answer;
+			int wrong1, wrong2, right, random;
+			for (int i = 0; i < 4; i++)
+				if (rightAns.compare(options[i]) == 0) {
+					right = i;
+					break;
+				}
+			random = rand() % 4;
+			while (random == right) random = rand() % 4;
+			wrong1 = random;
+			while (random == right || random == wrong1) random = rand() % 4;
+			wrong2 = random;
+
+			responseInfo.append(options[wrong1]).append(" ").append(options[wrong2]);
+		}
+		else responseCode = OUT_OF_ASSIST;
+	}
+	else if (strcmp(body, "PRO") == 0) {
+		if (clientInfo->assist.proChoice) {
+			responseCode = SUCCESS;
+			clientInfo->assist.proChoice = false;
+
+			string options[4] = { "A" , "B", "C", "D" };
+			int random = rand() % 100;
+			string proChoice = random < 80 ? clientInfo->listQues[clientInfo->currQuestion].answer : options[random % 4];
+
+			responseInfo.append(proChoice);
+		}
+		else responseCode = OUT_OF_ASSIST;
+	}
+	else {
+		responseCode = BAD_REQUEST;
+	}
+
+	response.append(to_string(responseCode));
+	if (responseInfo.length() != 0)	response.append(" ").append(responseInfo);
+
 	return response;
 }
 string quit(ClientInfo* clientInfo, char *body) {
@@ -242,7 +348,7 @@ string solveRequest(ClientInfo *clientInfo, char str[]) {
 	}
 	string response;
 	if (strcmp(&header[0], LOGIN) == 0) {
-	response = logIn(clientInfo, &payload[0]);
+		response = logIn(clientInfo, &payload[0]);
 	}
 	else if (strcmp(&header[0], START) == 0) {
 		response = start(clientInfo, &payload[0]);
@@ -250,6 +356,19 @@ string solveRequest(ClientInfo *clientInfo, char str[]) {
 	else if (strcmp(&header[0], QUIT) == 0) {
 		response = quit(clientInfo, &payload[0]);
 	}
+	else if (strcmp(&header[0], SIGNUP) == 0) {
+		response = signUp(clientInfo, &payload[0]);
+	}
+	else if (strcmp(&header[0], LOGOUT) == 0) {
+		response = logOut(clientInfo);
+	}
+	else if (strcmp(&header[0], ANSWER) == 0) {
+		response = answer(clientInfo, &payload[0]);
+	}
+	else if (strcmp(&header[0], ASSIST) == 0) {
+		response = assist(clientInfo, &payload[0]);
+	}
+
 	else response = UNFORMAT_REQUEST;
 	return response;
 }

@@ -68,8 +68,8 @@ struct ClientInfo {
 	sockaddr_in clientAddr;// address of client
 	Account userClient; // user client logined
 	int statusLogin;// logined is 1, else 0
-	int statusInGame;
-	Question listQues[15];
+	int statusInGame; // 0, 1, ...15/ -1, default = -1
+	vector<Question> listQues;
 	int score;
 	int currQuestion;
 	Assist assist;
@@ -137,6 +137,7 @@ vector<Question> getAllQuestions(string questions_path) {
 			}
 		}
 		questions.push_back(question);
+		if (id == 15) break;
 		id++;
 	}
 	file.close();
@@ -214,7 +215,7 @@ string logOut(ClientInfo* clientInfo) {
 	}
 	else {
 		clientInfo->statusLogin = false;
-		clientInfo->statusInGame = false;
+		clientInfo->statusInGame = -1;
 		response = SUCCESS;
 	}
 
@@ -226,20 +227,31 @@ string start(ClientInfo* clientInfo, char *body) {
 		response = NO_LOGIN;
 	}
 	else {
-		if (clientInfo->statusInGame) {
+		if (clientInfo->statusInGame != 0 & clientInfo->statusInGame != -1) {
 			response = STARTED;
 		}
-		else {
+		else if (clientInfo->statusInGame == -1) {
 			// start game
-			clientInfo->statusInGame = true;
+			clientInfo->statusInGame = 0;
 			clientInfo->score = 0;
 			clientInfo->currQuestion = 1;
 			clientInfo->assist = Assist();
-			//clientInfo->listQues = ;
+			clientInfo->listQues = questions;
 			response = SUCCESS;
 		}
 	}
 	return to_string(response);
+}
+string getQues(ClientInfo* clientInfo, char *body) {
+	string bodyStr = string(body);
+	string response;
+	ResponseCode responseCode;
+	string responseInfo = "";
+	responseCode = SUCCESS;
+	Question q = clientInfo->listQues[stoi(bodyStr)];
+	responseInfo.append(q.question).append("%#%").append(q.options[0]).append("%#%").append(q.options[1]).append("%#%").append(q.options[2]).append("%#%").append(q.options[3]);
+	response.append(to_string(responseCode)).append(" ").append(responseInfo);
+	return response;
 }
 string answer(ClientInfo* clientInfo, char *body) {
 
@@ -249,7 +261,7 @@ string answer(ClientInfo* clientInfo, char *body) {
 
 
 	if (!clientInfo->statusLogin) responseCode = NO_LOGIN;
-	else if (!clientInfo->statusInGame) responseCode = NOT_IN_GAME;
+	else if (clientInfo->statusInGame == -1) responseCode = NOT_IN_GAME;
 	else {
 		responseCode = SUCCESS;
 		int qNum = clientInfo->currQuestion;
@@ -271,7 +283,7 @@ string assist(ClientInfo* clientInfo, char *body) {
 
 
 	if (!clientInfo->statusLogin) responseCode = NO_LOGIN;
-	else if (!clientInfo->statusInGame) responseCode = NOT_IN_GAME;
+	else if (clientInfo->statusInGame == -1) responseCode = NOT_IN_GAME;
 	else if (strcmp(body, "5050") == 0) {
 		if (clientInfo->assist._50_50) {
 			responseCode = SUCCESS;
@@ -323,12 +335,12 @@ string quit(ClientInfo* clientInfo, char *body) {
 		response = NO_LOGIN;
 	}
 	else {
-		if (!clientInfo->statusInGame) { // no in game
+		if (clientInfo->statusInGame == -1) { // no in game
 			response = CANNOT_QUIT;
 		}
 		else {
 			// quit game
-			clientInfo->statusInGame = false;
+			clientInfo->statusInGame = -1;
 			clientInfo->score = 0;
 			//clientInfo->listQues = ;
 			response = SUCCESS;

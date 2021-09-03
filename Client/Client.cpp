@@ -53,6 +53,7 @@ string signUp();
 string logIn();
 string logOut();
 string start();
+string getQues();
 string answer();
 string assist();
 string quit();
@@ -253,9 +254,7 @@ void playGame(SOCKET client) {
 		vector<string> reqs = split(request, " ");
 		response = recv(client);
 		vector<string> ress = split(response, "\r\n");
-		cout << "play1";
 		solveResponse(ress[0], client, reqs[0]);
-		cout << "play2";
 	}
 	else if (select == 2) {
 		Sleep(200);
@@ -307,6 +306,11 @@ string start() {
 	request.append("\r\n");
 	return request;
 }
+string getQues(int index) {
+	string request;
+	request.append(QUESTION).append(" ").append(to_string(index)).append("\r\n");
+	return request;
+}
 string answer(string option) {
 	string request;
 	request.append(ANSWER).append(" ").append(option).append("\r\n");
@@ -343,6 +347,35 @@ void solveResponse(string str, SOCKET client, string header) {
 		playGame(client);
 	}
 	else if (strcmp(&str[0], SUCCESS) == 0 && strcmp(&header[0], START)) {
-		cout << "start success1";// get cau hoi 1
+		cout << "START GAME\n";// get cau hoi 1
+		for (int i = 1; i <= 15; i++) {
+			getQues(i);
+			// cout question
+			bool checkAns = true;
+			while (1) {
+				int ans;
+				// get cau hỏi --> in ra
+				cout << "Choose 1->4 to answer(0 to change assistants): ";
+				cin >> ans;
+				if (ans == 0) {
+					int choice;
+					// send assist to server
+					string request = assist();
+					send(client, &request[0]);
+					// solve response
+					cout << "Your answer is: " << endl;
+				}
+				else {
+					// gửi đáp án cho server
+					// if đúng --> break
+					// sai --> game over
+					checkAns = false; break;
+				}
+			}
+			if (!checkAns) {
+				// game over
+				break;
+			}
+		}
 	}
 }

@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
 						memset(clientInfo, 0, sizeof(*clientInfo));
 						clientInfo->socket = connSock;
 						clientInfo->clientAddr = clientAddr;
-
+						clientInfo->statusInGame = -1;
 						clientInfos[i] = clientInfo;
 						events[i] = WSACreateEvent();
 						WSAEventSelect(clientInfos[i]->socket, events[i], FD_READ | FD_CLOSE);

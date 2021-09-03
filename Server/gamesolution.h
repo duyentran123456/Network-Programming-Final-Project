@@ -380,7 +380,9 @@ string solveRequest(ClientInfo *clientInfo, char str[]) {
 	else if (strcmp(&header[0], ASSIST) == 0) {
 		response = assist(clientInfo, &payload[0]);
 	}
-
+	else if (strcmp(&header[0], QUESTION) == 0) {
+		response = getQues(clientInfo, &payload[0]);
+	}
 	else response = UNFORMAT_REQUEST;
 	return response;
 }

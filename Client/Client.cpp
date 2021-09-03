@@ -350,7 +350,8 @@ void solveResponse(string str, SOCKET client, string header) {
 		cout << "START GAME\n";// get cau hoi 1
 		for (int i = 1; i <= 15; i++) {
 			getQues(i);
-			// cout question
+			//send to server
+			// cout question from response of server
 			bool checkAns = true;
 			while (1) {
 				int ans;

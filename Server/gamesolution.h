@@ -70,8 +70,6 @@ struct ClientInfo {
 	int statusLogin;// logined is 1, else 0
 	int statusInGame; // 0, 1, ...15/ -1, default = -1
 	vector<Question> listQues;
-	int score;
-	int currQuestion;
 	Assist assist;
 };
 /*
@@ -233,8 +231,6 @@ string start(ClientInfo* clientInfo, char *body) {
 		else if (clientInfo->statusInGame == -1) {
 			// start game
 			clientInfo->statusInGame = 0;
-			clientInfo->score = 0;
-			clientInfo->currQuestion = 1;
 			clientInfo->assist = Assist();
 			clientInfo->listQues = questions;
 			response = SUCCESS;
@@ -264,9 +260,18 @@ string answer(ClientInfo* clientInfo, char *body) {
 	else if (clientInfo->statusInGame == -1) responseCode = NOT_IN_GAME;
 	else {
 		responseCode = SUCCESS;
-		int qNum = clientInfo->currQuestion;
-		if (clientInfo->listQues[qNum].answer.compare(body) == 0) responseInfo = "true";
-		else responseInfo = "false";
+		int qNum = clientInfo->statusInGame;
+		if (clientInfo->listQues[qNum].answer.compare(body) == 0) {
+			responseInfo = "true";
+			if (qNum == 14) {
+				clientInfo->statusInGame = -1;
+			}
+			else qNum++;
+		}
+		else {
+			responseInfo = "false";
+			clientInfo->statusInGame = -1;
+		}
 	}
 
 	response.append(to_string(responseCode));
@@ -289,8 +294,8 @@ string assist(ClientInfo* clientInfo, char *body) {
 			responseCode = SUCCESS;
 			clientInfo->assist._50_50 = false;
 
-			string options[4] = { "A" , "B", "C", "D" };
-			string rightAns = clientInfo->listQues[clientInfo->currQuestion].answer;
+			string options[4] = { "1" , "2", "3", "4" };
+			string rightAns = clientInfo->listQues[clientInfo->statusInGame].answer;
 			int wrong1, wrong2, right, random;
 			for (int i = 0; i < 4; i++)
 				if (rightAns.compare(options[i]) == 0) {
@@ -312,9 +317,9 @@ string assist(ClientInfo* clientInfo, char *body) {
 			responseCode = SUCCESS;
 			clientInfo->assist.proChoice = false;
 
-			string options[4] = { "A" , "B", "C", "D" };
+			string options[4] = { "1" , "2", "3", "4" };
 			int random = rand() % 100;
-			string proChoice = random < 80 ? clientInfo->listQues[clientInfo->currQuestion].answer : options[random % 4];
+			string proChoice = random < 80 ? clientInfo->listQues[clientInfo->statusInGame].answer : options[random % 4];
 
 			responseInfo.append(proChoice);
 		}
@@ -341,7 +346,6 @@ string quit(ClientInfo* clientInfo, char *body) {
 		else {
 			// quit game
 			clientInfo->statusInGame = -1;
-			clientInfo->score = 0;
 			//clientInfo->listQues = ;
 			response = SUCCESS;
 		}

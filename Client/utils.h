@@ -31,6 +31,7 @@ vector<string> split(string s, string del)
 	rs.push_back(substr);
 	return rs;
 }
+
 /**
 * Receive message of SOCKET
 * @param currSoc: SOCKET receive message

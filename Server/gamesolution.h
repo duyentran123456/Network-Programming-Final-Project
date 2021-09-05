@@ -38,7 +38,6 @@ enum ResponseCode {
 	USERNAME_EXISTED = 21,
 	OUT_OF_ASSIST = 22,
 	NOT_IN_GAME = 23,
-	CANNOT_QUIT = 24,
 	STARTED = 29,
 	WRONG_LEVEL = 201
 };
@@ -417,7 +416,7 @@ string quit(ClientInfo* clientInfo, char *body) {
 	}
 	else {
 		if (clientInfo->statusInGame == -1) { // no in game
-			response = CANNOT_QUIT;
+			response = NOT_IN_GAME;
 		}
 		else {
 			// quit game

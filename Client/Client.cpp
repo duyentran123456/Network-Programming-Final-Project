@@ -2,14 +2,14 @@
 //
 
 #include "stdafx.h"
-#include "VeKhung.h"
 #include <iostream>
 #include <stdlib.h>
 #include <string>
 #include <winsock2.h>
 #include <WS2tcpip.h>
-#include "Client_modules.h"
 #include "gamesolution.h"
+#include "utils.h"
+#include <windows.h>
 
 #define BUFF_SIZE  2048
 #define MSG_EMPTY 0
@@ -50,6 +50,7 @@ struct Game {
 	bool isPlaying;
 
 	int level;
+	int score;
 	bool assist5050;
 	bool assistPro;
 	Question ques;
@@ -59,9 +60,10 @@ struct Game {
 		this->assist5050 = true;
 		this->assistPro = true;
 		this->level = 1;
+		this->score = 0;
 	}
 };
-
+int scores[] = { 100, 400, 600, 1000, 2000, 3000, 6000, 10000, 14000, 22000, 30000, 40000, 60000, 85000, 150000 };
 Game clientGame = Game();
 
 string recv(SOCKET &currSoc);
@@ -74,6 +76,7 @@ void logOut(SOCKET &client);
 void signUp(SOCKET &client);
 void startGame(SOCKET &client);
 void renderGame(Game game);
+void showInstruction(SOCKET &client);
 Question getQues(SOCKET &client, int index);
 
 int main(int argc, char* argv[])
@@ -118,48 +121,10 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-/************TRUYEN NHAN THONG DIEP*******************/
-
-string recv(SOCKET &currSoc) {
-	char buff[BUFF_SIZE];
-	string data;
-	int ret, len = 0;
-	while (1) {
-		ret = recv(currSoc, buff, BUFF_SIZE, 0);
-		if (ret == SOCKET_ERROR) {
-			printf("Cannot receive message.");
-			break;
-		}
-		buff[ret] = 0;
-		len += ret;
-		// append
-		data.append(buff);
-		bool check = false;
-		for (int i = 0; i < len - 1; i++) {
-			if (data[i] == '\r'&& data[i + 1] == '\n') check = true;
-		}
-		if (check) break;
-	}
-	return data;
-}
-
-void send(SOCKET &currSoc, char req[]) {
-	int rLeft = strlen(req);
-	int index = 0;
-	int ret;
-	while (rLeft > 0) {
-		ret = send(currSoc, req + index, rLeft, 0);
-		if (ret == SOCKET_ERROR) {
-			printf("Cannot send data\n");
-			return;
-		}
-		rLeft -= ret;
-		index += ret;
-	}
-}
-
-/**************************GIAO DIEN **************************/
-
+/*
+* Function to print menu
+* @param client: SOCKET client
+*/
 void menu(SOCKET &client) {
 	system("cls");
 	cout << "Enter 1 to log in " << endl;
@@ -183,6 +148,10 @@ void menu(SOCKET &client) {
 	} while (select<1 || select>3);
 }
 
+/*
+* Function to print menu of game
+* @param client: SOCKET client
+*/
 void gameMenu(SOCKET &client) {
 	system("cls");
 	cout << "1 - start game" << endl;
@@ -196,7 +165,7 @@ void gameMenu(SOCKET &client) {
 		cin >> select;
 		switch (select) {
 		case 1: return startGame(client);
-		case 2: return showInstruction();
+		case 2: return showInstruction(client);
 		case 3: return logOut(client);
 		default:
 			cout << " Chon khong hop le vui long chon lai \n";
@@ -204,6 +173,10 @@ void gameMenu(SOCKET &client) {
 	} while (select<1 || select>3);
 }
 
+/*
+* Function to log in
+* @param client: SOCKET client
+*/
 void logIn(SOCKET &client) {
 	system("cls");
 	string request, response;
@@ -228,48 +201,71 @@ void logIn(SOCKET &client) {
 	return gameMenu(client);
 }
 
+/*
+* Function to log out
+* @param client: SOCKET client
+*/
 void logOut(SOCKET &client) {
 	// send logout msg
 	// cout log out success or fail and comeback to menu
+	string request, response;
+	request.append(LOGOUT).append("\r\n");
+	send(client, &request[0]);
+	response = recv(client);
+	response = split(response, "\r\n")[0];
+	if (strcmp(&response[0], SUCCESS) != 0) {
+		cout << "Error happend" << endl;
+		cout << "Enter something to try again or comeback to menu" << endl;
+		return gameMenu(client);
+	}
+	return menu(client);
 }
 
+/*
+* Function to sign up
+* @param client: SOCKET client
+*/
 void signUp(SOCKET &client) {
 	system("cls");
-string request, response;
-string username, password;
+	string request, response;
+	string username, password;
 
-cout << "REGISTER PAGE" << endl;
-cout << "Nhap username: " << endl; cin >> username;
-cout << "Nhap password: " << endl; cin >> password;
+	cout << "REGISTER PAGE" << endl;
+	cout << "Nhap username: " << endl; cin >> username;
+	cout << "Nhap password: " << endl; cin >> password;
 
-request.append(SIGNUP).append(" ").append(username).append(" ").append(password).append("\r\n");
-send(client, &request[0]);
+	request.append(SIGNUP).append(" ").append(username).append(" ").append(password).append("\r\n");
+	send(client, &request[0]);
 
-response = recv(client);
-response = split(response, "\r\n")[0];
-vector<string> params = split(response, " ");
-if (params[0] == SUCCESS) {
-	cout << "Register new user successfully, enter 1 to go to log in page, enter 2 to come back to main menu: " << endl;
-	int select;
-	cin >> select;
-	while (select != 1 && select != 2) {
-		cout << "Invalid options! Please enter 1 or 2" << endl;
+	response = recv(client);
+	response = split(response, "\r\n")[0];
+	vector<string> params = split(response, " ");
+	if (params[0] == SUCCESS) {
+		cout << "Register new user successfully, enter 1 to go to log in page, enter 2 to come back to main menu: " << endl;
+		int select;
 		cin >> select;
+		while (select != 1 && select != 2) {
+			cout << "Invalid options! Please enter 1 or 2" << endl;
+			cin >> select;
+		}
+		if (select == 1) {
+			return logIn(client);
+		}
+		if (select == 2) {
+			return menu(client);
+		}
 	}
-	if (select == 1) {
-		return logIn(client);
+	else {
+		cout << "Error " << params[0] << " - Do you want to do it again? ";
+		cout << "...";
 	}
-	if (select == 2) {
-		return menu(client);
-	}
-}
-else {
-	cout << "Error " << params[0] << " - Do you want to do it again? ";
-	cout << "...";
-}
 
 }
 
+/*
+* Function to start game
+* @param client: SOCKET client
+*/
 void startGame(SOCKET &client) {
 	system("cls");
 	string request, response;
@@ -359,6 +355,7 @@ void startGame(SOCKET &client) {
 					return gameMenu(client);
 				}
 				cout << "Tra loi dung cau hoi!";
+				clientGame.score += scores[clientGame.level-1];
 				clientGame.level++;
 				clientGame.ques = getQues(client, clientGame.level - 1);				
 			}
@@ -389,9 +386,13 @@ void startGame(SOCKET &client) {
 	return gameMenu(client);
 }
 
+/*
+* Function to render game when start success
+* @param client: SOCKET client
+*/
 void renderGame(Game game) {
 	system("cls");
-	cout << "Level: " << game.level << endl;
+	cout << "Level: " << game.level << " - " << "Score: " << game.score << endl;
 	if (game.assist5050) cout << "Enter 5 to choose 5050 assistance" << endl;
 	if (game.assistPro) cout << "Enter 6 to choose PRO assistance" << endl;
 	cout << "\n\n";
@@ -404,6 +405,12 @@ void renderGame(Game game) {
 	cout << "Enter 7 to quit game" << endl;
 }
 
+/*
+* Function to get a question from server
+* @param client: SOCKET client
+* @param index: index of question
+* return a question response from server
+*/
 Question getQues(SOCKET &client, int index) {
 	Question q;
 
@@ -434,4 +441,58 @@ Question getQues(SOCKET &client, int index) {
 	}
 
 	return q;
+}
+/**
+* function: show instruction
+*/
+void showInstruction(SOCKET &client) {
+	cout << "1.  You can play as an entire class or in two groups.\n";
+	cout << "If you play as an entire class, it is suggested that\n";
+	cout << "you call on different students to answer questions.\n";
+	cout << "If you play as two teams, you will need to play two games.\n";
+	cout << "You will need to appoint a spokesperson for each team.\n";
+	cout << "I have also played with two teams, alternating questions\n";
+	cout << "between the two and keeping score.\n";
+	cout << "2.  Once the game has loaded, and is in slide show view,\n";
+	cout << "click on the $100 question.This game is very easy\n";
+	cout << "to use since many of the directions are on each slide.\n";
+	cout << "If a student would like to use 50 / 50, phone a friend\n";
+	cout << "or ask the audience, click on the appropriate button.\n";
+	cout << "Then follow the slides.\n";
+	cout << "3. Directions for viewing the previous slide are given\n";
+	cout << "on each slide.\n";
+	cout << "4.  The game is over when a question is missed.1.You can play as an entire class or in two groups.\n";
+	cout << "If you play as an entire class, it is suggested that\n";
+	cout << "you call on different students to answer questions.\n";
+	cout << "If you play as two teams, you will need to play two games.\n";
+	cout << "You will need to appoint a spokesperson for each team.\n";
+	cout << "I have also played with two teams, alternating questions\n";
+	cout << "between the two and keeping score.\n";
+	cout << "2.  Once the game has loaded, and is in slide show view,\n";
+	cout << "click on the $100 question.This game is very easy\n";
+	cout << "to use since many of the directions are on each slide.\n";
+	cout << "If a student would like to use 50 / 50, phone a friend\n";
+	cout << "or ask the audience, click on the appropriate button.\n";
+	cout << "Then follow the slides.\n";
+	cout << "3. Directions for viewing the previous slide are given\n";
+	cout << "on each slide.\n";
+	cout << "4.  The game is over when a question is missed.\n";
+
+	cout << "Enter 1 to back " << endl;
+	cout << "Enter 2 to quit" << endl;
+
+	int select;
+	do
+	{
+		cout << "\nChon muc muon chon: ";
+		cin >> select;
+		switch (select) {
+		case 1: return gameMenu(client);
+		case 2: closesocket(client);
+			exit(0);
+			break;
+		default:
+			cout << " Chon khong hop le vui long chon lai \n";
+		}
+	} while (select<1 || select>2);
 }

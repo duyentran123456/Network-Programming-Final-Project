@@ -5,11 +5,16 @@
 #include "vector"
 #include "ws2tcpip.h"
 #include "winsock2.h"
+
+
+
 using namespace std;
 #define BUFF_SIZE 2048
 
 /*
 * Function to split string by delimiter
+* @param s: [IN] string need split
+* @param del: [IN] string to split
 * @returns list of string
 */
 vector<string> split(string s, string del)
@@ -43,7 +48,11 @@ string convertToString(char* a, int size)
 	}
 	return s;
 }
-
+/**
+* Receive message of SOCKET
+* @param currSoc: SOCKET receive message
+* @returns string response from server
+*/
 string recv(SOCKET &currSoc) {
 	char buff[BUFF_SIZE];
 	string data;
@@ -67,6 +76,11 @@ string recv(SOCKET &currSoc) {
 	return data;
 }
 
+/**
+* Send message of SOCKET
+* @param currSoc: SOCKET send message
+* @param req: char array is message sending
+*/
 void send(SOCKET &currSoc, char req[]) {
 	int rLeft = strlen(req);
 	int index = 0;
@@ -80,4 +94,14 @@ void send(SOCKET &currSoc, char req[]) {
 		rLeft -= ret;
 		index += ret;
 	}
+}
+
+/*
+* Function render integer random in [minN, maxN]
+* @param minN: [IN] min integer
+* @param maxN: [IN] max integer
+* @returns integer result
+*/
+int random(int minN, int maxN) {
+	return minN + rand() % (maxN + 1 - minN);
 }

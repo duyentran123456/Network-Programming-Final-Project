@@ -40,6 +40,7 @@ enum ResponseCode {
 	NOT_IN_GAME = 23,
 	CANNOT_QUIT = 24,
 	STARTED = 29,
+	WRONG_LEVEL = 201
 };
 
 struct Question {
@@ -74,6 +75,7 @@ struct ClientInfo {
 };
 /*
 * Function to get all accounts in database
+* @params accounts_path: path of file account
 * @returns list of account in database
 */
 vector<Account> getAllAccounts(string accounts_path) {
@@ -96,6 +98,8 @@ vector<Account> getAllAccounts(string accounts_path) {
 
 /*
 * Function save new account to database
+* @param account: account want to save
+* @param accounts_path: path of file account
 */
 void saveAccount(Account account, string accounts_path) {
 	string input;
@@ -113,6 +117,7 @@ void saveAccount(Account account, string accounts_path) {
 
 /*
 * Function to get all questions in database
+* @params questions_path: path of file questions
 * @returns list of question in database
 */
 vector<Question> getAllQuestions(string questions_path) {
@@ -135,7 +140,7 @@ vector<Question> getAllQuestions(string questions_path) {
 			}
 		}
 		questions.push_back(question);
-		if (id == 15) break;
+		//if (id == 15) break;
 		id++;
 	}
 	file.close();
@@ -147,6 +152,13 @@ string ACCOUNTS_PATH = "account.txt";
 vector<Account> accounts = getAllAccounts(ACCOUNTS_PATH);
 vector<Question> questions = getAllQuestions(QUESTIONS_PATH);
 
+
+/*
+* Function to sign up
+* @params clientInfo: current ClientInfo
+* @params body: payload request from client
+* @returns string response to send client
+*/
 string signUp(ClientInfo* clientInfo, char *body) {
 
 	ResponseCode response;
@@ -177,6 +189,13 @@ string signUp(ClientInfo* clientInfo, char *body) {
 
 	return to_string(response);
 }
+
+/*
+* Function to log in
+* @params clientInfo: current ClientInfo
+* @params body: payload request from client
+* @returns string response to send client
+*/
 string logIn(ClientInfo* clientInfo, char* body) {
 	ResponseCode response = INCORRECT_ACCOUNT;
 	Account account;
@@ -205,6 +224,12 @@ string logIn(ClientInfo* clientInfo, char* body) {
 	}
 	return to_string(response);
 }
+
+/*
+* Function to log out
+* @params clientInfo: current ClientInfo
+* @returns string response to send client
+*/
 string logOut(ClientInfo* clientInfo) {
 
 	ResponseCode response;
@@ -214,41 +239,78 @@ string logOut(ClientInfo* clientInfo) {
 	else {
 		clientInfo->statusLogin = false;
 		clientInfo->statusInGame = -1;
+		clientInfo->listQues.clear();
+		clientInfo->assist.proChoice = false;
+		clientInfo->assist._50_50 = false;
 		response = SUCCESS;
 	}
 
 	return to_string(response);
 }
+
+/*
+* Function to start game
+* @params clientInfo: current ClientInfo
+* @params body: payload request from client
+* @returns string response to send client
+*/
 string start(ClientInfo* clientInfo, char *body) {
 	ResponseCode response = BAD_REQUEST;
 	if (!clientInfo->statusLogin) {
 		response = NO_LOGIN;
 	}
 	else {
-		if (clientInfo->statusInGame != 0 & clientInfo->statusInGame != -1) {
+		if (clientInfo->statusInGame != -1) {
 			response = STARTED;
 		}
-		else if (clientInfo->statusInGame == -1) {
+		else {
 			// start game
 			clientInfo->statusInGame = 0;
 			clientInfo->assist = Assist();
-			clientInfo->listQues = questions;
+			int len = questions.size();
+			int rands = random(1, len - 14);
+			for (int i = 0; i < 15; i++) {
+				clientInfo->listQues.push_back(questions[i + rands - 1]);
+			}
+			//clientInfo->listQues = questions;
 			response = SUCCESS;
 		}
 	}
 	return to_string(response);
 }
+
+/*
+* Function to get a question from list questions
+* @params clientInfo: current ClientInfo
+* @params body: payload request from client
+* @returns string response to send client
+*/
 string getQues(ClientInfo* clientInfo, char *body) {
 	string bodyStr = string(body);
 	string response;
 	ResponseCode responseCode;
 	string responseInfo = "";
-	responseCode = SUCCESS;
-	Question q = clientInfo->listQues[stoi(bodyStr)];
-	responseInfo.append(q.question).append("%#%").append(q.options[0]).append("%#%").append(q.options[1]).append("%#%").append(q.options[2]).append("%#%").append(q.options[3]);
+	if (!clientInfo->statusLogin) responseCode = NO_LOGIN;
+	else if (clientInfo->statusInGame == -1) responseCode = NOT_IN_GAME;
+	else if (clientInfo->statusInGame != stoi(bodyStr)) {
+		responseCode = WRONG_LEVEL;
+	}
+	else {
+		responseCode = SUCCESS;
+		Question q = clientInfo->listQues[stoi(bodyStr)];
+		responseInfo.append(q.question).append("%#%").append(q.options[0]).append("%#%").append(q.options[1]).append("%#%").append(q.options[2]).append("%#%").append(q.options[3]);
+	}
+
 	response.append(to_string(responseCode)).append(" ").append(responseInfo);
 	return response;
 }
+
+/*
+* Function to answer a question
+* @params clientInfo: current ClientInfo
+* @params body: payload request from client
+* @returns string response to send client
+*/
 string answer(ClientInfo* clientInfo, char *body) {
 
 	string response;
@@ -266,7 +328,7 @@ string answer(ClientInfo* clientInfo, char *body) {
 			if (qNum == 14) {
 				clientInfo->statusInGame = -1;
 			}
-			else qNum++;
+			else clientInfo->statusInGame++;
 		}
 		else {
 			responseInfo = "false";
@@ -280,6 +342,13 @@ string answer(ClientInfo* clientInfo, char *body) {
 
 	return response;
 }
+
+/*
+* Function to get an assistant
+* @params clientInfo: current ClientInfo
+* @params body: payload request from client
+* @returns string response to send client
+*/
 string assist(ClientInfo* clientInfo, char *body) {
 
 	string response;
@@ -334,6 +403,13 @@ string assist(ClientInfo* clientInfo, char *body) {
 
 	return response;
 }
+
+/*
+* Function to quit game
+* @params clientInfo: current ClientInfo
+* @params body: payload request from client
+* @returns string response to send client
+*/
 string quit(ClientInfo* clientInfo, char *body) {
 	ResponseCode response = BAD_REQUEST;
 	if (!clientInfo->statusLogin) {
@@ -346,14 +422,21 @@ string quit(ClientInfo* clientInfo, char *body) {
 		else {
 			// quit game
 			clientInfo->statusInGame = -1;
-			//clientInfo->listQues = ;
+			clientInfo->listQues.clear();
+			clientInfo->assist.proChoice = false;
+			clientInfo->assist._50_50 = false;
 			response = SUCCESS;
 		}
 	}
 	return to_string(response);
 }
 
-
+/*
+* Function to solve request from client
+* @params clientInfo: current ClientInfo
+* @params str: string message request from client
+* @returns string response to send client
+*/
 string solveRequest(ClientInfo *clientInfo, char str[]) {
 	string header, payload;
 	string convertStr = convertToString(str, strlen(str));
@@ -391,6 +474,11 @@ string solveRequest(ClientInfo *clientInfo, char str[]) {
 	return response;
 }
 
+/*
+* Function to split messages request by "\r\n"
+* @params s: string need to split
+* @returns vector string splited
+*/
 vector<string> splitRequest(string s) {
 	vector<string> res;
 	string delimiter = "\r\n";
@@ -405,6 +493,10 @@ vector<string> splitRequest(string s) {
 	return res;
 }
 
+/*
+* Function to communicating with client
+* @params clientInfo: current ClientInfo
+*/
 void communicating(ClientInfo *clientInfo) {
 	// receive message from client
 	string buff;
@@ -423,12 +515,10 @@ void communicating(ClientInfo *clientInfo) {
 	// solve each string of vector string request
 	for (int i = 0; i < reqs.size(); i++) {
 		string req = reqs[i];
-		cout << "req" << req;
 		res = solveRequest(clientInfo, &req[0]);
 		res.append("\r\n");
 		// send response after append "\r\n" to client
 		send(clientInfo->socket, &res[0]);
-		cout << "res" << res;
 	}
 }
 

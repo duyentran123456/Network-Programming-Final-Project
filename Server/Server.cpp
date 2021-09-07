@@ -69,7 +69,6 @@ int main(int argc, char* argv[])
 	}
 
 	printf("Server started!\n");
-	//char sendBuff[BUFF_SIZE], recvBuff[BUFF_SIZE];
 	SOCKET connSock;
 	sockaddr_in clientAddr;
 	int clientAddrLen = sizeof(clientAddr);
@@ -137,7 +136,6 @@ int main(int argc, char* argv[])
 			catch (int err) {
 				if (err == SOCKET_ERROR || err == CLIENT_DISCONNECT) {
 					cout << "Client disconnect!\n";
-					//string code = quit(clientInfo[index]);
 					closesocket(clientInfos[index]->socket);
 					WSACloseEvent(events[index]);
 					clientInfos[index] = clientInfos[nEvents - 1];
@@ -153,7 +151,6 @@ int main(int argc, char* argv[])
 				printf("FD_CLOSE failed with error %d\n", sockEvent.iErrorCode[FD_CLOSE_BIT]);
 			}
 			//Release socket and event
-			//string code = quit(clientInfos[index]);
 			closesocket(clientInfos[index]->socket);
 			WSACloseEvent(events[index]);
 			clientInfos[index] = clientInfos[nEvents - 1];

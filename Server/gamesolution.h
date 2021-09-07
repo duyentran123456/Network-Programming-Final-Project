@@ -1,5 +1,4 @@
 #pragma once
-// include function of game 
 
 #include <string>
 #include <vector>
@@ -21,25 +20,24 @@
 #define RESULT "RESULT"
 #define ASSIST "ASSIST"
 #define QUIT "QUIT"
-#define VICTORY "VICTORY"
 #define UNFORMAT_REQUEST "UNFORMAT_REQUEST"
 using namespace std;
 
 enum ResponseCode {
 	SUCCESS = 30,
-	// Login
-	USER_LOGINED = 25,
-	ACCOUNT_LOCKED = 26,
-	INCORRECT_ACCOUNT = 27,
-	NO_LOGIN = 28,
 
 	SERVER_ERROR = 10,
+
 	BAD_REQUEST = 20,
 	USERNAME_EXISTED = 21,
 	OUT_OF_ASSIST = 22,
 	NOT_IN_GAME = 23,
+	WRONG_LEVEL = 24,
+	USER_LOGINED = 25,
+	ACCOUNT_LOCKED = 26,
+	INCORRECT_ACCOUNT = 27,
+	NO_LOGIN = 28,
 	STARTED = 29,
-	WRONG_LEVEL = 201
 };
 
 struct Question {
@@ -65,8 +63,8 @@ struct Account {
 
 struct ClientInfo {
 	SOCKET socket;
-	sockaddr_in clientAddr;// address of client
-	Account userClient; // user client logined
+	sockaddr_in clientAddr;
+	Account userClient;
 	int statusLogin;// logined is 1, else 0
 	int statusInGame; // 0, 1, ...15/ -1, default = -1
 	vector<Question> listQues;
@@ -88,7 +86,7 @@ vector<Account> getAllAccounts(string accounts_path) {
 		vector<string> data = split(line, " ");
 		account.username = data[0];
 		account.password = data[1];
-		account.status = stoi(data[2]); // convert to int
+		account.status = stoi(data[2]);
 		accounts.push_back(account);
 	}
 	file.close();
@@ -139,7 +137,6 @@ vector<Question> getAllQuestions(string questions_path) {
 			}
 		}
 		questions.push_back(question);
-		//if (id == 15) break;
 		id++;
 	}
 	file.close();
@@ -263,7 +260,6 @@ string start(ClientInfo* clientInfo, char *body) {
 			response = STARTED;
 		}
 		else {
-			// start game
 			clientInfo->statusInGame = 0;
 			clientInfo->assist = Assist();
 			int len = questions.size();
@@ -271,7 +267,6 @@ string start(ClientInfo* clientInfo, char *body) {
 			for (int i = 0; i < 15; i++) {
 				clientInfo->listQues.push_back(questions[i + rands - 1]);
 			}
-			//clientInfo->listQues = questions;
 			response = SUCCESS;
 		}
 	}
@@ -415,11 +410,10 @@ string quit(ClientInfo* clientInfo, char *body) {
 		response = NO_LOGIN;
 	}
 	else {
-		if (clientInfo->statusInGame == -1) { // no in game
+		if (clientInfo->statusInGame == -1) {
 			response = NOT_IN_GAME;
 		}
 		else {
-			// quit game
 			clientInfo->statusInGame = -1;
 			clientInfo->listQues.clear();
 			clientInfo->assist.proChoice = false;
@@ -497,26 +491,24 @@ vector<string> splitRequest(string s) {
 * @params clientInfo: current ClientInfo
 */
 void communicating(ClientInfo *clientInfo) {
-	// receive message from client
+
 	string buff;
 	string res;
 	buff = recv(clientInfo->socket);
 	if (buff.size() == 0) {
-		//string tmp = quit(clientInfo);
 		return;
 	}
 
 	buff[buff.size() - 2] = 0;
-	// copy message without "\r\n"
+	
 	string tmp;
 	for (int i = 0; i < buff.size() - 2; i++) tmp.push_back(buff[i]);
 	vector<string> reqs = splitRequest(buff);
-	// solve each string of vector string request
+	
 	for (int i = 0; i < reqs.size(); i++) {
 		string req = reqs[i];
 		res = solveRequest(clientInfo, &req[0]);
 		res.append("\r\n");
-		// send response after append "\r\n" to client
 		send(clientInfo->socket, &res[0]);
 	}
 }

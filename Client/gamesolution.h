@@ -34,6 +34,7 @@ enum ResponseCode {
 	USERNAME_EXISTED = 21,
 	OUT_OF_ASSIST = 22,
 	NOT_IN_GAME = 23,
+	WRONG_LEVEL = 24,
 	USER_LOGINED = 25,
 	ACCOUNT_LOCKED = 26,
 	INCORRECT_ACCOUNT = 27,
@@ -60,6 +61,7 @@ string getErrorDetail(string e) {
 	case INCORRECT_ACCOUNT: return "Wrong username or password!";
 	case NO_LOGIN: return "You are not log in yet!";
 	case STARTED: return "You already started the game!";
+	case WRONG_LEVEL: return "Question request for wrong level!";
 	default:
 		return "Unknown error";
 	}

@@ -487,6 +487,7 @@ Question getQues(SOCKET &client, int index) {
 }
 /**
 * function: show instruction
+* @param client: SOCKET client
 */
 void showInstruction(SOCKET &client) {
 	system("cls");
